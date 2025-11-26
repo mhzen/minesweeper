@@ -1,310 +1,295 @@
-#include <bits/stdc++.h>
+#include <iostream>
+#include <limits>
+#include <fstream>
+
 using namespace std;
 
-struct Cell {
-    bool mine = false;
-    bool revealed = false;
-    bool flagged = false;
-    int neighbors = 0;
-};
+// config
+const int ROWS = 9;
+const int COLS = 9;
+const int MINES = 10;
+const char HIDDEN = '#';
+const char BOMB = '💣';
+const string SAVEFILE = "minesweeper_save.txt";
 
-// Utilities
-static string trim(const string &s) {
-    size_t a = s.find_first_not_of(" \t\r\n");
-    if (a == string::npos) return "";
-    size_t b = s.find_last_not_of(" \t\r\n");
-    return s.substr(a, b - a + 1);
-}
-
-// Convert a row letter (A-Z) to index (0-based). Returns -1 if invalid.
-int rowFromLetter(char L) {
-    if (!isalpha((unsigned char)L)) return -1;
-    L = toupper((unsigned char)L);
-    return L - 'A';
-}
-
-string letterFromRow(int r) {
-    if (r < 0) return "?";
-    char c = char('A' + r);
-    return string(1, c);
-}
-
-// Parse coordinates like "12A" -> col 11, row 0
-bool parseCoord(const string &token, int &row, int &col, int maxRows, int maxCols) {
-    string t = trim(token);
-    if (t.empty()) return false;
-    // trailing letter(s) are row (we support single letter A..Z)
-    int n = (int)t.size();
-    int pos = n - 1;
-    while (pos >= 0 && isalpha((unsigned char)t[pos])) pos--;
-    if (pos == n - 1) return false; // no row letter
-    string colStr = t.substr(0, pos + 1);
-    string rowStr = t.substr(pos + 1);
-    if (colStr.empty() || rowStr.empty()) return false;
-    // only single letter row supported
-    if (rowStr.size() != 1) return false;
-    for (char ch : colStr) if (!isdigit((unsigned char)ch)) return false;
-    int c = stoi(colStr) - 1; // convert to 0-based
-    int r = rowFromLetter(rowStr[0]);
-    if (r < 0) return false;
-    if (r >= maxRows || c < 0 || c >= maxCols) return false;
-    row = r; col = c;
-    return true;
-}
-
-// Create an empty board
-vector<vector<Cell>> createBoard(int rows, int cols) {
-    return vector<vector<Cell>>(rows, vector<Cell>(cols));
-}
-
-// Place mines randomly
-void placeMines(vector<vector<Cell>> &board, int mines, unsigned int seed = 0) {
-    int rows = (int)board.size();
-    int cols = (int)board[0].size();
-    vector<int> idx(rows * cols);
-    iota(idx.begin(), idx.end(), 0);
-    std::mt19937 rng(seed ? seed : (unsigned)chrono::high_resolution_clock::now().time_since_epoch().count());
-    shuffle(idx.begin(), idx.end(), rng);
-    for (int i = 0; i < mines && i < (int)idx.size(); ++i) {
-        int v = idx[i];
-        int r = v / cols;
-        int c = v % cols;
-        board[r][c].mine = true;
+// Menaruk mine secara random
+void placeMines(char realBoard[ROWS][COLS]) {
+    int minesPlaced = 0;
+    while (minesPlaced < MINES) {
+        int r = rand() % ROWS;
+        int c = rand() % COLS;
+        if (realBoard[r][c] != BOMB) {
+            realBoard[r][c] = BOMB;
+            minesPlaced++;
+        }
     }
 }
 
-// Count neighbors for each cell
-void computeNeighbors(vector<vector<Cell>> &board) {
-    int rows = (int)board.size();
-    int cols = (int)board[0].size();
-    const int dr[8] = {-1,-1,-1,0,0,1,1,1};
-    const int dc[8] = {-1,0,1,-1,1,-1,0,1};
-    for (int r = 0; r < rows; ++r) {
-        for (int c = 0; c < cols; ++c) {
-            int cnt = 0;
-            for (int k = 0; k < 8; ++k) {
-                int nr = r + dr[k];
-                int nc = c + dc[k];
-                if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-                    if (board[nr][nc].mine) ++cnt;
+// Validasi Kordinat apakah ada didalam board
+bool isValid(int r, int c) {
+    return (r >= 0 && r < ROWS && c >= 0 && c < COLS);
+}
+
+// Calculate numbers based on surrounding mines
+void calculateNumbers(char realBoard[ROWS][COLS]) {
+    for (int r = 0; r < ROWS; r++) {
+        for (int c = 0; c < COLS; c++) {
+            // If it's a mine, skip it
+            if (realBoard[r][c] == BOMB) continue;
+
+            int count = 0;
+            // Check all 8 neighbors
+            for (int i = -1; i <= 1; i++) {
+                for (int j = -1; j <= 1; j++) {
+                    int nr = r + i;
+                    int nc = c + j;
+                    if (isValid(nr, nc) && realBoard[nr][nc] == BOMB) {
+                        count++;
+                    }
                 }
             }
-            board[r][c].neighbors = cnt;
+            realBoard[r][c] = count + '0'; // Convert int to char
         }
     }
 }
 
-// Reveal using BFS for zeros
-bool revealCell(vector<vector<Cell>> &board, int r, int c) {
-    int rows = (int)board.size();
-    int cols = (int)board[0].size();
-    if (board[r][c].flagged || board[r][c].revealed) return true;
-    board[r][c].revealed = true;
-    if (board[r][c].mine) return false; // hit mine
-    if (board[r][c].neighbors != 0) return true;
-    // BFS to reveal neighbors
-    queue<pair<int,int>> q;
-    q.push({r,c});
-    const int dr[8] = {-1,-1,-1,0,0,1,1,1};
-    const int dc[8] = {-1,0,1,-1,1,-1,0,1};
-    while (!q.empty()) {
-        auto p = q.front(); q.pop();
-        for (int k = 0; k < 8; ++k) {
-            int nr = p.first + dr[k];
-            int nc = p.second + dc[k];
-            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-                if (!board[nr][nc].revealed && !board[nr][nc].flagged) {
-                    board[nr][nc].revealed = true;
-                    if (board[nr][nc].neighbors == 0 && !board[nr][nc].mine) q.push({nr,nc});
-                }
+// Initialize boards with default values
+void initBoards(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
+    for (int i = 0; i < ROWS; i++) {
+        for (int j = 0; j < COLS; j++) {
+            viewBoard[i][j] = HIDDEN; // '.' represents a covered cell
+            realBoard[i][j] = '0'; // Default to 0 neighbors
+        }
+    }
+    placeMines(realBoard);
+    calculateNumbers(realBoard);
+}
+
+// Load state from file
+bool loadGame(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
+    ifstream inFile(SAVEFILE);
+    if (inFile.is_open()) {
+        // Load real board
+        for (int i = 0; i < ROWS; i++) {
+            for (int j = 0; j < COLS; j++) {
+                inFile >> realBoard[i][j];
             }
         }
-    }
-    return true;
-}
-
-void toggleFlag(vector<vector<Cell>> &board, int r, int c) {
-    if (board[r][c].revealed) return;
-    board[r][c].flagged = !board[r][c].flagged;
-}
-
-bool checkWin(const vector<vector<Cell>> &board) {
-    int rows = (int)board.size();
-    int cols = (int)board[0].size();
-    for (int r = 0; r < rows; ++r) {
-        for (int c = 0; c < cols; ++c) {
-            if (!board[r][c].mine && !board[r][c].revealed) return false;
-        }
-    }
-    return true;
-}
-
-// Print board with chess-like rows (A...) and numbered columns (1...)
-void printBoard(const vector<vector<Cell>> &board, bool revealAll = false) {
-    int rows = (int)board.size();
-    int cols = (int)board[0].size();
-    // column header
-    cout << "   ";
-    for (int c = 0; c < cols; ++c) {
-        cout << setw(3) << (c + 1);
-    }
-    cout << '\n';
-    for (int r = 0; r < rows; ++r) {
-        cout << setw(3) << letterFromRow(r);
-        for (int c = 0; c < cols; ++c) {
-            const Cell &cell = board[r][c];
-            char ch = '.';
-            if (revealAll) {
-                if (cell.mine) ch = '*';
-                else if (cell.neighbors > 0) ch = char('0' + cell.neighbors);
-                else ch = ' ';
-            } else {
-                if (cell.flagged) ch = 'F';
-                else if (cell.revealed) {
-                    if (cell.mine) ch = '*';
-                    else if (cell.neighbors > 0) ch = char('0' + cell.neighbors);
-                    else ch = ' ';
-                } else ch = '.';
+        // Load view board
+        for (int i = 0; i < ROWS; i++) {
+            for (int j = 0; j < COLS; j++) {
+                inFile >> viewBoard[i][j];
             }
-            cout << setw(3) << ch;
         }
-        cout << '\n';
-    }
-}
-
-// Save format: first line rows cols mines (mines optional), then each row a sequence of triplets "mrf" where m=1|0 mine, r=1|0 revealed, f=1|0 flagged
-bool saveGame(const vector<vector<Cell>> &board, const string &filename, int minesCount = -1) {
-    ofstream ofs(filename);
-    if (!ofs) return false;
-    int rows = (int)board.size();
-    int cols = (int)board[0].size();
-    ofs << rows << ' ' << cols << ' ' << minesCount << "\n";
-    for (int r = 0; r < rows; ++r) {
-        for (int c = 0; c < cols; ++c) {
-            const Cell &cell = board[r][c];
-            ofs << (cell.mine ? '1' : '0')
-                << (cell.revealed ? '1' : '0')
-                << (cell.flagged ? '1' : '0');
-        }
-        ofs << "\n";
-    }
-    return true;
-}
-
-bool loadGame(vector<vector<Cell>> &board, const string &filename) {
-    ifstream ifs(filename);
-    if (!ifs) return false;
-    int rows, cols, minesCount;
-    ifs >> rows >> cols >> minesCount;
-    string line;
-    getline(ifs, line); // consume endline
-    vector<vector<Cell>> tmp = createBoard(rows, cols);
-    for (int r = 0; r < rows; ++r) {
-        if (!getline(ifs, line)) return false;
-        int expected = cols * 3;
-        if ((int)line.size() < expected) return false;
-        for (int c = 0; c < cols; ++c) {
-            int pos = c * 3;
-            tmp[r][c].mine = (line[pos] == '1');
-            tmp[r][c].revealed = (line[pos+1] == '1');
-            tmp[r][c].flagged = (line[pos+2] == '1');
-        }
-    }
-    computeNeighbors(tmp);
-    board = std::move(tmp);
-    return true;
-}
-
-// Main game loop (kept short; all logic lives in functions outside)
-int main() {
-    cout << "Minesweeper (no pointers) - simple CLI\n";
-    cout << "Enter rows (A..Z as count) and columns (numbers). Max 26 rows. Example 9 9\n";
-    cout << "Or enter 'L filename' to load a saved game.\n";
-    string cmd;
-    vector<vector<Cell>> board;
-    int rows = 9, cols = 9, mines = 10;
-    bool loaded = false;
-    cout << "> ";
-    if (!getline(cin, cmd)) return 0;
-    cmd = trim(cmd);
-    if (!cmd.empty() && (cmd[0] == 'L' || cmd[0] == 'l')) {
-        string fn = trim(cmd.substr(1));
-        if (fn.empty()) fn = "save.ms";
-        if (loadGame(board, fn)) {
-            rows = (int)board.size();
-            cols = (int)board[0].size();
-            loaded = true;
-            cout << "Loaded game from " << fn << "\n";
-        } else {
-            cout << "Failed to load, starting new\n";
-        }
+        inFile.close();
+        cout << "Game loaded successfully." << endl;
+        return true;
     } else {
-        if (!cmd.empty()) {
-            // try parse two integers
-            istringstream iss(cmd);
-            if (!(iss >> rows >> cols)) { rows = 9; cols = 9; }
-        }
-        cout << "Enter mines count (suggested " << max(1, (rows*cols)/6) << ") or press Enter for default: ";
-        string mline; getline(cin, mline);
-        if (!trim(mline).empty()) mines = stoi(trim(mline));
-        board = createBoard(rows, cols);
-        placeMines(board, mines);
-        computeNeighbors(board);
+        cout << "No save file found." << endl;
+        return false;
     }
+}
 
-    bool lost = false;
-    while (true) {
-        printBoard(board, false);
-        if (checkWin(board)) {
-            cout << "You win!\n";
-            printBoard(board, true);
+// Save state to file
+void saveGame(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
+    ofstream outFile(SAVEFILE);
+    if (outFile.is_open()) {
+        // Save real board
+        for (int i = 0; i < ROWS; i++) {
+            for (int j = 0; j < COLS; j++) {
+                outFile << realBoard[i][j];
+            }
+            outFile << endl;
+        }
+        // Save view board
+        for (int i = 0; i < ROWS; i++) {
+            for (int j = 0; j < COLS; j++) {
+                outFile << viewBoard[i][j];
+            }
+            outFile << endl;
+        }
+        outFile.close();
+        cout << "Game saved to " << SAVEFILE << endl;
+    } else {
+        cout << "Error saving file." << endl;
+    }
+}
+
+// Display the board to the console
+void printBoard(char viewBoard[ROWS][COLS]) {
+    // Print column headers
+    cout << "\n    ";
+    for (int j = 1; j <= COLS; j++) {
+        cout << j << " ";
+        if (j < 10) cout << " "; // Alignment spacing
+    }
+    cout << endl;
+
+    cout << "   ";
+    for (int j = 0; j < COLS; j++) cout << "---";
+    cout << endl;
+
+    for (int i = 0; i < ROWS; i++) {
+        // Print Row Header (A, B, C...)
+        cout << (char)('A' + i) << " | ";
+
+        for (int j = 0; j < COLS; j++) {
+            cout << viewBoard[i][j] << "  ";
+        }
+        cout << endl;
+    }
+    cout << endl;
+}
+
+// Place or remove a flag
+void toggleFlag(int r, int c, char viewBoard[ROWS][COLS]) {
+    if (viewBoard[r][c] == HIDDEN) {
+        viewBoard[r][c] = 'F';
+    } else if (viewBoard[r][c] == 'F') {
+        viewBoard[r][c] = HIDDEN;
+    } else {
+        cout << "Cannot flag a revealed cell." << endl;
+    }
+}
+
+// Recursive flood fill to reveal empty areas
+void revealCell(int r, int c, char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
+    // Base cases for recursion
+    if (!isValid(r, c)) return;
+    if (viewBoard[r][c] != HIDDEN) return; // Already revealed or flagged
+
+    // Reveal the current cell
+    viewBoard[r][c] = realBoard[r][c];
+
+    // If it's a '0', recursively reveal neighbors
+    if (realBoard[r][c] == '0') {
+        // Change '0' to space ' ' for cleaner look on board
+        viewBoard[r][c] = ' ';
+
+        for (int i = -1; i <= 1; i++) {
+            for (int j = -1; j <= 1; j++) {
+                revealCell(r + i, c + j, realBoard, viewBoard);
+            }
+        }
+    }
+}
+
+// Check if the player won
+bool checkWin(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
+    for (int i = 0; i < ROWS; i++) {
+        for (int j = 0; j < COLS; j++) {
+            // If a cell is NOT a mine, but it is still hidden ('.') or flagged ('F'),
+            // the game is not won yet.
+            if (realBoard[i][j] != BOMB && (viewBoard[i][j] == HIDDEN || viewBoard[i][j] == 'F')) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+int main(){
+    srand(time(0));
+    char realBoard[ROWS][COLS]; // Yang diproses internal
+    char viewBoard[ROWS][COLS]; // Yang diliat user
+    bool gameOver = 0;
+    char command; // Command dari input "r 12A" -> r nya
+    int colInput; //
+    char rowInput;
+    bool gameRunning = 1;
+
+    int choice;
+    do {
+        cout << "Minesweeper Game" << endl;
+        cout << "Apa yang ingin dilakukan?" << endl;
+        cout << "1. New Game" << endl;
+        cout << "2. Load Game" << endl;
+        cout << "Choice: ";
+        cin >> choice;
+
+        if (cin.fail()) {
+            cout << "Invalid input! Please enter a number." << endl;
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            choice = 0;
+        }
+    } while (choice != 1 && choice != 2);
+    // ngeloop sampe inputnya bener
+
+    if (choice == 2 && !loadGame(realBoard, viewBoard)){
+        cout << "Starting new game instead..." << endl;
+    }
+    initBoards(realBoard, viewBoard);
+
+    while (gameRunning) {
+        printBoard(viewBoard);
+
+        cout << endl << "Commands: 'r' (reveal), 'f' (flag), 's' (save), 'q' (quit)" << endl;
+        cout << "Format: [cmd] [col][row] (e.g., 'r 5C' or 'f 10A')" << endl;
+        cout << "Enter command: ";
+        cin >> command;
+
+        cout << endl << "----------------------------------------" << endl;
+
+        // kalo s/q cuman diambil satu karakter gak peduli lanjutanya
+        if (command == 's') {
+            saveGame(realBoard, viewBoard);
+            continue;
+        }
+        if (command == 'q') {
+            cout << "Quitting game." << endl;
             break;
         }
-        if (lost) {
-            cout << "You hit a mine. Game over.\n";
-            printBoard(board, true);
-            break;
+
+        // Read coordinates
+        cin >> colInput >> rowInput;
+
+        if (cin.fail()){
+            cout << "Kordinat tidak valid! Masukkan angka (1-" << COLS << ") "
+                 << "diikuti dengan huruf (A-" << char('A' + ROWS - 1) << ").";
+            cout << endl << "----------------------------------------" << endl;
+            // cout << "Invalid coordinates! Please enter a letter (A-" << char('A' + ROWS - 1)
+            //      << ") followed by a number (1-" << COLS << ")." << endl;
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            continue;
         }
-        cout << "Commands: r <col><RowLetter> | f <col><RowLetter> | s [filename] | q\n";
-        cout << "> ";
-        string line;
-        if (!getline(cin, line)) break;
-        line = trim(line);
-        if (line.empty()) continue;
-        // split
-        istringstream iss(line);
-        string token; iss >> token;
-        if (token.empty()) continue;
-        char action = token[0];
-        if (action == 'q' || action == 'Q') break;
-        if ((action == 'r' || action == 'R' || action == 'f' || action == 'F')) {
-            string coord;
-            if (!(iss >> coord)) {
-                cout << "No coordinate provided. Example: r 12A\n";
-                continue;
-            }
-            int r,c;
-            if (!parseCoord(coord, r, c, (int)board.size(), (int)board[0].size())) {
-                cout << "Invalid coordinate. Use <col><RowLetter> like 12A and ensure inside board.\n";
-                continue;
-            }
-            if (action == 'f' || action == 'F') {
-                toggleFlag(board, r, c);
+
+        // Convert Inputs: Row 'A' -> 0, Col '1' -> 0
+
+        int col = colInput - 1;
+
+        int row = -1;
+        // Handle lowercase or uppercase row input
+        if (rowInput >= 'A' && rowInput <= 'Z') {
+            row = rowInput - 'A';
+        } else if (rowInput >= 'a' && rowInput <= 'z') {
+            row = rowInput - 'a';
+        }
+
+        // Validate
+        if (!isValid(row, col)) {
+            cout << "Invalid coordinates! Try again." << endl;
+            continue;
+        }
+
+        if (command == 'f') {
+            toggleFlag(row, col, viewBoard);
+        } else if (command == 'r') {
+            // Check if user hit a mine
+            if (realBoard[row][col] == BOMB) {
+                printBoard(realBoard); // Show current state
+                cout << endl << "BOOM! You hit a mine at " << colInput << rowInput << "!" << endl;
+                cout << "Game Over." << endl;
+                gameRunning = false;
             } else {
-                // reveal
-                if (!revealCell(board, r, c)) {
-                    lost = true;
+                revealCell(row, col, realBoard, viewBoard);
+                if (checkWin(realBoard, viewBoard)) {
+                    printBoard(viewBoard);
+                    cout << endl << "CONGRATULATIONS! You cleared the minefield!" << endl;
+                    gameRunning = false;
                 }
             }
-        } else if (action == 's' || action == 'S') {
-            string filename;
-            if (!(iss >> filename)) filename = "save.ms";
-            if (saveGame(board, filename, mines)) cout << "Saved to " << filename << "\n";
-            else cout << "Failed to save to " << filename << "\n";
-        } else {
-            cout << "Unknown command: " << action << "\n";
         }
     }
-    cout << "Bye.\n";
-    return 0;
 }
