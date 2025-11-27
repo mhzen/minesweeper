@@ -286,7 +286,7 @@ int main(){
 
         // Validate
         if (!isValid(row, col)) {
-            cout << "Invalid coordinates! Try again." << endl;
+            cout << "Kordinat tidak valid! Coba lagi." << endl;
             continue;
         }
 
@@ -297,14 +297,16 @@ int main(){
             if (realBoard[row][col] == BOMB) {
                 cleanBoard(realBoard);
                 printBoard(realBoard); // Tampilkan board asli saat game over
-                cout << endl << "BOOM! You hit a mine at " << colInput << rowInput << "!" << endl;
+                cout << endl
+                     << "BOOM! Anda terkena mine di " << colInput << rowInput << "! (つ╥﹏╥)つ" << endl;
                 cout << "Game Over." << endl;
                 gameRunning = false;
             } else {
                 revealCell(row, col, realBoard, viewBoard);
                 if (checkWin(realBoard, viewBoard)) {
                     printBoard(viewBoard);
-                    cout << endl << "CONGRATULATIONS! You cleared the minefield!" << endl;
+                    cout << endl
+                         << "CONGRATULATIONS! Anda berhasil membersihkan area mine! ദ്ദി ˉ͈̀꒳ˉ͈́ )✧" << endl;
                     gameRunning = false;
                 }
             }
