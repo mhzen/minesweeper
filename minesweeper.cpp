@@ -4,7 +4,7 @@
 
 using namespace std;
 
-// config
+// Konfigurasi
 const int ROWS = 16;
 const int COLS = 16;
 const int MINES = 40;
@@ -54,7 +54,7 @@ void calculateNumbers(char realBoard[ROWS][COLS]) {
     }
 }
 
-// Inisialisasi board dengan nilai default di config
+// Inisialisasi board dengan nilai default di konfigurasi diatas
 void initBoards(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
     for (int i = 0; i < ROWS; i++) {
         for (int j = 0; j < COLS; j++) {
@@ -67,17 +67,17 @@ void initBoards(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
 }
 
 
-// Fungsi loading dari file
+// Fungsi memuat data dari save file
 bool loadGame(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
     ifstream inFile(SAVEFILE);
     if (inFile.is_open()) {
-        // Load real board
+        // Loading real board
         for (int i = 0; i < ROWS; i++) {
             for (int j = 0; j < COLS; j++) {
                 inFile >> realBoard[i][j];
             }
         }
-        // Load view board
+        // Loading view board
         for (int i = 0; i < ROWS; i++) {
             for (int j = 0; j < COLS; j++) {
                 inFile >> viewBoard[i][j];
@@ -92,18 +92,18 @@ bool loadGame(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
     }
 }
 
-// Fungsi saving ke file
+// Fungsi menyimpan ke save file
 void saveGame(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
     ofstream outFile(SAVEFILE);
     if (outFile.is_open()) {
-        // Save real board
+        // Saving real board
         for (int i = 0; i < ROWS; i++) {
             for (int j = 0; j < COLS; j++) {
                 outFile << realBoard[i][j];
             }
             outFile << endl;
         }
-        // Save view board
+        // Saving view board
         for (int i = 0; i < ROWS; i++) {
             for (int j = 0; j < COLS; j++) {
                 outFile << viewBoard[i][j];
@@ -117,30 +117,28 @@ void saveGame(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
     }
 }
 
-// Display board ke terminal
+// Mencetak board ke terminal
 void printBoard(char viewBoard[ROWS][COLS]) {
-    // Print header column
-    cout << endl << "    "; // agar angka align di print whitespace itu
+    cout << endl << "    "; // menyejajarkan angka di kolom
 
-    // Printing angka di kolom
+    // Mencetak angka di judul kolom
     for (int j = 1; j <= COLS; j++) {
         cout << j << " ";
-        if (j < 10) cout << " "; // spacing
+        if (j < 10) cout << " "; // jarak antar angka
     }
     cout << endl;
 
-    // garis2 di bawahnya angka
+    // garis2 di bawahnya judul kolom
     cout << "   ";
     for (int j = 0; j < COLS; j++) cout << "---";
     cout << endl;
 
     for (int i = 0; i < ROWS; i++) {
-        // Printing huruf di baris (A, B, C...) dan garis | di kananya
-        // ini jujur gtw knp harus di konversi ke char (padahal keduanya udh char),
-        // kalo gak di static_cast gitu malah jadi int gtw knp
+        // Mencetak huruf di baris (A, B, C...) dan garis | di kananya
+        // di konversi ke char agar tidak error (penambahan akan jadi int)
         cout << static_cast<char>('A' + i) << " | ";
 
-        // Printing viewboard nya itu sendiri
+        // Mencetak viewboard nya itu sendiri
         for (int j = 0; j < COLS; j++) {
             cout << viewBoard[i][j] << "  ";
         }
@@ -149,7 +147,7 @@ void printBoard(char viewBoard[ROWS][COLS]) {
     cout << endl;
 }
 
-// Toggle flag di cell tertentu
+// Menandai dengan flag di cell tertentu
 void toggleFlag(int r, int c, char viewBoard[ROWS][COLS]) {
     if (viewBoard[r][c] == HIDDEN) {
         viewBoard[r][c] = 'F';
@@ -196,7 +194,7 @@ bool checkWin(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
     return true;
 }
 
-// Bersihkan board saat game over (ganti '0' ke '.') di realBoard
+// Untuk kalau menang: Bersihkan realboard saat game over (ganti '0' ke '.') di realBoard supaya lebih rapi
 void cleanBoard(char realBoard[ROWS][COLS]) {
     for (int i = 0; i < ROWS; i++) {
         for (int j = 0; j < COLS; j++) {
