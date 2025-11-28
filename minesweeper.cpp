@@ -4,12 +4,12 @@
 
 using namespace std;
 
-// Konfigurasi
-const int ROWS = 16;
-const int COLS = 16;
-const int MINES = 40;
+// config
+const int ROWS = 9;
+const int COLS = 9;
+const int MINES = 5;
 const char HIDDEN = '#';
-const char BOMB = '💣';
+const char BOMB = '*';
 const char EMPTY = '.';
 const string SAVEFILE = "minesweeper_save.txt";
 
@@ -54,7 +54,7 @@ void calculateNumbers(char realBoard[ROWS][COLS]) {
     }
 }
 
-// Inisialisasi board dengan nilai default di konfigurasi diatas
+// Inisialisasi board dengan nilai default di config
 void initBoards(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
     for (int i = 0; i < ROWS; i++) {
         for (int j = 0; j < COLS; j++) {
@@ -67,17 +67,17 @@ void initBoards(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
 }
 
 
-// Fungsi memuat data dari save file
+// Fungsi loading dari file
 bool loadGame(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
     ifstream inFile(SAVEFILE);
     if (inFile.is_open()) {
-        // Loading real board
+        // Load real board
         for (int i = 0; i < ROWS; i++) {
             for (int j = 0; j < COLS; j++) {
                 inFile >> realBoard[i][j];
             }
         }
-        // Loading view board
+        // Load view board
         for (int i = 0; i < ROWS; i++) {
             for (int j = 0; j < COLS; j++) {
                 inFile >> viewBoard[i][j];
@@ -92,18 +92,18 @@ bool loadGame(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
     }
 }
 
-// Fungsi menyimpan ke save file
+// Fungsi saving ke file
 void saveGame(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
     ofstream outFile(SAVEFILE);
     if (outFile.is_open()) {
-        // Saving real board
+        // Save real board
         for (int i = 0; i < ROWS; i++) {
             for (int j = 0; j < COLS; j++) {
                 outFile << realBoard[i][j];
             }
             outFile << endl;
         }
-        // Saving view board
+        // Save view board
         for (int i = 0; i < ROWS; i++) {
             for (int j = 0; j < COLS; j++) {
                 outFile << viewBoard[i][j];
@@ -117,28 +117,30 @@ void saveGame(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
     }
 }
 
-// Mencetak board ke terminal
+// Display board ke terminal
 void printBoard(char viewBoard[ROWS][COLS]) {
-    cout << endl << "    "; // menyejajarkan angka di kolom
+    // Print header column
+    cout << endl << "    "; // agar angka align di print whitespace itu
 
-    // Mencetak angka di judul kolom
+    // Printing angka di kolom
     for (int j = 1; j <= COLS; j++) {
         cout << j << " ";
-        if (j < 10) cout << " "; // jarak antar angka
+        if (j < 10) cout << " "; // spacing
     }
     cout << endl;
 
-    // garis2 di bawahnya judul kolom
+    // garis2 di bawahnya angka
     cout << "   ";
     for (int j = 0; j < COLS; j++) cout << "---";
     cout << endl;
 
     for (int i = 0; i < ROWS; i++) {
-        // Mencetak huruf di baris (A, B, C...) dan garis | di kananya
-        // di konversi ke char agar tidak error (penambahan akan jadi int)
+        // Printing huruf di baris (A, B, C...) dan garis | di kananya
+        // ini jujur gtw knp harus di konversi ke char (padahal keduanya udh char),
+        // kalo gak di static_cast gitu malah jadi int gtw knp
         cout << static_cast<char>('A' + i) << " | ";
 
-        // Mencetak viewboard nya itu sendiri
+        // Printing viewboard nya itu sendiri
         for (int j = 0; j < COLS; j++) {
             cout << viewBoard[i][j] << "  ";
         }
@@ -147,14 +149,14 @@ void printBoard(char viewBoard[ROWS][COLS]) {
     cout << endl;
 }
 
-// Menandai dengan flag di cell tertentu
+// Toggle flag di cell tertentu
 void toggleFlag(int r, int c, char viewBoard[ROWS][COLS]) {
     if (viewBoard[r][c] == HIDDEN) {
         viewBoard[r][c] = 'F';
     } else if (viewBoard[r][c] == 'F') {
         viewBoard[r][c] = HIDDEN;
     } else {
-        cout << "Tidak bisa menandai sel yang sudah dibuka." << endl;
+        cout << "Tidak bisa menandai cell yang sudah dibuka." << endl;
     }
 }
 
@@ -194,7 +196,7 @@ bool checkWin(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
     return true;
 }
 
-// Untuk kalau menang: Bersihkan realboard saat game over (ganti '0' ke '.') di realBoard supaya lebih rapi
+// Bersihkan board saat game over (ganti '0' ke '.') di realBoard
 void cleanBoard(char realBoard[ROWS][COLS]) {
     for (int i = 0; i < ROWS; i++) {
         for (int j = 0; j < COLS; j++) {
@@ -233,20 +235,32 @@ int main(){
     } while (choice != 1 && choice != 2);
     // ngeloop terus sampe inputnya bener
 
-    if (choice == 2 && !loadGame(realBoard, viewBoard)){
-        cout << "Memulai game baru..." << endl;
+    bool loaded = false;
+    if (choice == 2) {
+        loaded = loadGame(realBoard, viewBoard);
+        if (!loaded) {
+            cout << "Memulai game baru..." << endl;
+        }
     }
-    initBoards(realBoard, viewBoard);
+    if (!loaded) {
+        initBoards(realBoard, viewBoard);
+    }
 
     while (gameRunning) {
         printBoard(viewBoard);
 
         cout << endl << "Commands: 'r' (reveal), 'f' (flag), 's' (save), 'q' (quit)" << endl;
-        cout << "Format: [cmd] [col][row] (e.g., 'r 5C' or 'f 10A')" << endl;
+        cout << "Format: [cmd] [col][row] (cth., 'r 5C' atau 'f 10A')" << endl;
         cout << "Masukkan command: ";
         cin >> command;
 
         cout << endl << "----------------------------------------" << endl;
+
+        if (command != 'r' && command != 'f' && command != 's' && command != 'q' ){
+            cout << "Command tidak valid!" << endl;
+            cout << "----------------------------------------" << endl;
+            continue;
+        }
 
         // kalo s/q cuman diambil satu karakter awal gak peduli lanjutanya
         if (command == 's') {
