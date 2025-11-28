@@ -14,29 +14,29 @@ const char EMPTY = '.';
 const string SAVEFILE = "minesweeper_save.txt";
 
 // Menaruk mine secara random
-void placeMines(char realBoard[ROWS][COLS]) {
+void letakbom(char papanasli[ROWS][COLS]) {
     int minesPlaced = 0;
     while (minesPlaced < MINES) {
         int r = rand() % ROWS;
         int c = rand() % COLS;
-        if (realBoard[r][c] != BOMB) {
-            realBoard[r][c] = BOMB;
+        if (papanasli[r][c] != BOMB) {
+            papanasli[r][c] = BOMB;
             minesPlaced++;
         }
     }
 }
 
 // Validasi Kordinat apakah ada didalam board
-bool isValid(int r, int c) {
+bool validasikoordinat(int r, int c) {
     return (r >= 0 && r < ROWS && c >= 0 && c < COLS);
 }
 
 // Kalkulasi angka berdasarkan mine disekitarnya
-void calculateNumbers(char realBoard[ROWS][COLS]) {
+void hitungbom(char papanasli[ROWS][COLS]) {
     for (int r = 0; r < ROWS; r++) {
         for (int c = 0; c < COLS; c++) {
             // Jika itu mine, lewati
-            if (realBoard[r][c] == BOMB) continue;
+            if (papanasli[r][c] == BOMB) continue;
 
             int count = 0;
             // Cek 8 tetangganya
@@ -44,43 +44,43 @@ void calculateNumbers(char realBoard[ROWS][COLS]) {
                 for (int j = -1; j <= 1; j++) {
                     int nr = r + i;
                     int nc = c + j;
-                    if (isValid(nr, nc) && realBoard[nr][nc] == BOMB) {
+                    if (validasikoordinat(nr, nc) && papanasli[nr][nc] == BOMB) {
                         count++;
                     }
                 }
             }
-            realBoard[r][c] = static_cast<char>(count + '0'); // Convert (static cast) int ke char: https://www.geeksforgeeks.org/cpp/cpp-program-for-int-to-char-conversion/
+            papanasli[r][c] = static_cast<char>(count + '0'); // Convert (static cast) int ke char: https://www.geeksforgeeks.org/cpp/cpp-program-for-int-to-char-conversion/
         }
     }
 }
 
 // Inisialisasi board dengan nilai default di config
-void initBoards(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
+void inisiasipapan(char papanasli[ROWS][COLS], char papantampilan[ROWS][COLS]) {
     for (int i = 0; i < ROWS; i++) {
         for (int j = 0; j < COLS; j++) {
-            viewBoard[i][j] = HIDDEN; // ngikut config
-            realBoard[i][j] = '0'; // Default nya 0 tetangga (Kalo bukan mine)
+            papantampilan[i][j] = HIDDEN; // ngikut config
+            papanasli[i][j] = '0'; // Default nya 0 tetangga (Kalo bukan mine)
         }
     }
-    placeMines(realBoard);
-    calculateNumbers(realBoard);
+    letakbom(papanasli);
+    hitungbom(papanasli);
 }
 
 
 // Fungsi loading dari file
-bool loadGame(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
+bool lanjutkan(char papanasli[ROWS][COLS], char papantampilan[ROWS][COLS]) {
     ifstream inFile(SAVEFILE);
     if (inFile.is_open()) {
         // Load real board
         for (int i = 0; i < ROWS; i++) {
             for (int j = 0; j < COLS; j++) {
-                inFile >> realBoard[i][j];
+                inFile >> papanasli[i][j];
             }
         }
         // Load view board
         for (int i = 0; i < ROWS; i++) {
             for (int j = 0; j < COLS; j++) {
-                inFile >> viewBoard[i][j];
+                inFile >> papantampilan[i][j];
             }
         }
         inFile.close();
@@ -93,20 +93,20 @@ bool loadGame(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
 }
 
 // Fungsi saving ke file
-void saveGame(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
+void simpan(char papanasli[ROWS][COLS], char papantampilan[ROWS][COLS]) {
     ofstream outFile(SAVEFILE);
     if (outFile.is_open()) {
         // Save real board
         for (int i = 0; i < ROWS; i++) {
             for (int j = 0; j < COLS; j++) {
-                outFile << realBoard[i][j];
+                outFile << papanasli[i][j];
             }
             outFile << endl;
         }
         // Save view board
         for (int i = 0; i < ROWS; i++) {
             for (int j = 0; j < COLS; j++) {
-                outFile << viewBoard[i][j];
+                outFile << papantampilan[i][j];
             }
             outFile << endl;
         }
@@ -118,7 +118,7 @@ void saveGame(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
 }
 
 // Display board ke terminal
-void printBoard(char viewBoard[ROWS][COLS]) {
+void cetakpapan(char papantampilan[ROWS][COLS]) {
     // Print header column
     cout << endl << "    "; // agar angka align di print whitespace itu
 
@@ -140,9 +140,9 @@ void printBoard(char viewBoard[ROWS][COLS]) {
         // kalo gak di static_cast gitu malah jadi int gtw knp
         cout << static_cast<char>('A' + i) << " | ";
 
-        // Printing viewboard nya itu sendiri
+        // Printing papantampilan nya itu sendiri
         for (int j = 0; j < COLS; j++) {
-            cout << viewBoard[i][j] << "  ";
+            cout << papantampilan[i][j] << "  ";
         }
         cout << endl;
     }
@@ -150,44 +150,44 @@ void printBoard(char viewBoard[ROWS][COLS]) {
 }
 
 // Toggle flag di cell tertentu
-void toggleFlag(int r, int c, char viewBoard[ROWS][COLS]) {
-    if (viewBoard[r][c] == HIDDEN) {
-        viewBoard[r][c] = 'F';
-    } else if (viewBoard[r][c] == 'F') {
-        viewBoard[r][c] = HIDDEN;
+void bendera(int r, int c, char papantampilan[ROWS][COLS]) {
+    if (papantampilan[r][c] == HIDDEN) {
+        papantampilan[r][c] = 'F';
+    } else if (papantampilan[r][c] == 'F') {
+        papantampilan[r][c] = HIDDEN;
     } else {
         cout << "Tidak bisa menandai cell yang sudah dibuka." << endl;
     }
 }
 
 // Reveal rekursif untuk membuka area kosong
-void revealCell(int r, int c, char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
+void membukacell(int r, int c, char papanasli[ROWS][COLS], char papantampilan[ROWS][COLS]) {
     // base case
-    if (!isValid(r, c)) return;
-    if (viewBoard[r][c] != HIDDEN) return; // sudah dibuka / di flag
+    if (!validasikoordinat(r, c)) return;
+    if (papantampilan[r][c] != HIDDEN) return; // sudah dibuka / di flag
 
     // reveal cell saat ini
-    viewBoard[r][c] = realBoard[r][c];
+    papantampilan[r][c] = papanasli[r][c];
 
     // Jika kosong, lanjut reveal tetangga
-    if (realBoard[r][c] == '0') {
+    if (papanasli[r][c] == '0') {
         // ganti 0 ke EMPTY
-        viewBoard[r][c] = EMPTY;
+        papantampilan[r][c] = EMPTY;
 
         for (int i = -1; i <= 1; i++) {
             for (int j = -1; j <= 1; j++) {
-                revealCell(r + i, c + j, realBoard, viewBoard);
+                membukacell(r + i, c + j, papanasli, papantampilan);
             }
         }
     }
 }
 
 // Cek kemenangan
-bool checkWin(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
+bool cekkemenangan(char papanasli[ROWS][COLS], char papantampilan[ROWS][COLS]) {
     for (int i = 0; i < ROWS; i++) {
         for (int j = 0; j < COLS; j++) {
             // Jika ada satu saja yang bukan mine tapi masih hidden/flagged, berarti belum menang
-            if (realBoard[i][j] != BOMB && (viewBoard[i][j] == HIDDEN || viewBoard[i][j] == 'F')) {
+            if (papanasli[i][j] != BOMB && (papantampilan[i][j] == HIDDEN || papantampilan[i][j] == 'F')) {
                 return false;
                 break; // Langsung keluar loop jika ketemu satu saja
             }
@@ -196,12 +196,12 @@ bool checkWin(char realBoard[ROWS][COLS], char viewBoard[ROWS][COLS]) {
     return true;
 }
 
-// Bersihkan board saat game over (ganti '0' ke '.') di realBoard
-void cleanBoard(char realBoard[ROWS][COLS]) {
+// Bersihkan board saat game over (ganti '0' ke '.') di papanasli
+void gantiangkanol(char papanasli[ROWS][COLS]) {
     for (int i = 0; i < ROWS; i++) {
         for (int j = 0; j < COLS; j++) {
-            if (realBoard[i][j] == '0') {
-                realBoard[i][j] = EMPTY;
+            if (papanasli[i][j] == '0') {
+                papanasli[i][j] = EMPTY;
             }
         }
     }
@@ -209,12 +209,12 @@ void cleanBoard(char realBoard[ROWS][COLS]) {
 
 int main(){
     srand(time(0)); // Inisialisasi seed random
-    char realBoard[ROWS][COLS]; // Yang diproses internal
-    char viewBoard[ROWS][COLS]; // Yang diliat user
+    char papanasli[ROWS][COLS]; // Yang diproses internal
+    char papantampilan[ROWS][COLS]; // Yang diliat user
     bool gameOver = 0;
     char command; // Command dari input "r 12A" -> r nya
-    int colInput; // 12 nya
-    char rowInput; // A nya
+    int inputkolom; // 12 nya
+    char inputbaris; // A nya
     bool gameRunning = 1; // true terus sampai quit / menang / kalah
 
     int choice;
@@ -237,17 +237,17 @@ int main(){
 
     bool loaded = false;
     if (choice == 2) {
-        loaded = loadGame(realBoard, viewBoard);
+        loaded = lanjutkan(papanasli, papantampilan);
         if (!loaded) {
             cout << "Memulai game baru..." << endl;
         }
     }
     if (!loaded) {
-        initBoards(realBoard, viewBoard);
+        inisiasipapan(papanasli, papantampilan);
     }
 
     while (gameRunning) {
-        printBoard(viewBoard);
+        cetakpapan(papantampilan);
 
         cout << endl << "Commands: 'r' (reveal), 'f' (flag), 's' (save), 'q' (quit)" << endl;
         cout << "Format: [cmd] [col][row] (cth., 'r 5C' atau 'f 10A')" << endl;
@@ -264,7 +264,7 @@ int main(){
 
         // kalo s/q cuman diambil satu karakter awal gak peduli lanjutanya
         if (command == 's') {
-            saveGame(realBoard, viewBoard);
+            simpan(papanasli, papantampilan);
             continue;
         }
         if (command == 'q') {
@@ -273,7 +273,7 @@ int main(){
         }
 
         // Baca kordinat
-        cin >> colInput >> rowInput;
+        cin >> inputkolom >> inputbaris;
 
         if (cin.fail()){
             cout << "Kordinat tidak valid! Masukkan angka (1-" << COLS << ") "
@@ -286,37 +286,37 @@ int main(){
 
         // Convert Inputs: Row 'A' -> 0, Col '1' -> 0
 
-        int col = colInput - 1;
+        int col = inputkolom - 1;
 
         int row = -1;
         // Handle lowercase or uppercase row input
-        if (rowInput >= 'A' && rowInput <= 'Z') {
-            row = rowInput - 'A';
-        } else if (rowInput >= 'a' && rowInput <= 'z') {
-            row = rowInput - 'a';
+        if (inputbaris >= 'A' && inputbaris <= 'Z') {
+            row = inputbaris - 'A';
+        } else if (inputbaris >= 'a' && inputbaris <= 'z') {
+            row = inputbaris - 'a';
         }
 
         // Validate
-        if (!isValid(row, col)) {
+        if (!validasikoordinat(row, col)) {
             cout << "Kordinat tidak valid! Coba lagi." << endl;
             continue;
         }
 
         if (command == 'f') {
-            toggleFlag(row, col, viewBoard);
+            bendera(row, col, papantampilan);
         } else if (command == 'r') {
             // Cek jika membuka mine
-            if (realBoard[row][col] == BOMB) {
-                cleanBoard(realBoard);
-                printBoard(realBoard); // Tampilkan board asli saat game over
+            if (papanasli[row][col] == BOMB) {
+                gantiangkanol(papanasli);
+                cetakpapan(papanasli); // Tampilkan board asli saat game over
                 cout << endl
-                     << "BOOM! Anda terkena mine di " << colInput << rowInput << "! (つ╥﹏╥)つ" << endl;
+                     << "BOOM! Anda terkena mine di " << inputkolom << inputbaris << "! (つ╥﹏╥)つ" << endl;
                 cout << "Game Over." << endl;
                 gameRunning = false;
             } else {
-                revealCell(row, col, realBoard, viewBoard);
-                if (checkWin(realBoard, viewBoard)) {
-                    printBoard(viewBoard);
+                membukacell(row, col, papanasli, papantampilan);
+                if (cekkemenangan(papanasli, papantampilan)) {
+                    cetakpapan(papantampilan);
                     cout << endl
                          << "CONGRATULATIONS! Anda berhasil membersihkan area mine! ദ്ദി ˉ͈̀꒳ˉ͈́ )✧" << endl;
                     gameRunning = false;
