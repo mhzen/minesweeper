@@ -9,7 +9,7 @@ const int ROWS = 9;
 const int COLS = 9;
 const int MINES = 5;
 const char HIDDEN = '#';
-const char BOMB = '*';
+const char BOMB = '💣';
 const char EMPTY = '.';
 const string SAVEFILE = "minesweeper_save.txt";
 
